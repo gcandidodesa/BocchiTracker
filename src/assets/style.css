@@ -1,0 +1,38 @@
+:root {
+    --cor-fundo: #0f172a;
+    --cor-texto: #f8fafc;
+    --cor-primaria: #38bdf8;
+    --cor-card: #1e293b;
+}
+
+[data-theme="bocchi"] {
+    --cor-fundo: #FFFACD; 
+    --cor-texto: #333333;
+    --cor-primaria: #FFB6C1;
+    --cor-card: #ffffff;
+}
+
+body{
+    background-color: var(--cor-fundo);
+    color: var(--cor-texto);
+    transition: background-color 0.4s ease, color 0.4 ease;
+    font-family: sans-serif;
+    margin: 0;
+    padding: 20px;
+}
+
+button {
+    background-color: var(--cor-primaria);
+    color: #111;
+    border: none;
+    padding: 10px 20px;
+    margin: 10px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: bold;
+    transition: opacity 0.2s;
+}
+
+button:hover {
+    opacity: 0.8;
+}
