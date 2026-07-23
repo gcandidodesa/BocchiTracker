@@ -1,41 +1,142 @@
 // src/services/api.js
 
-export async function buscarMidiaExterna(query, tipo) {
+export async function buscarOmniMidia(query) {
+  const resultadosGlobais = [];
+  
+  // Transforma espaços em %20 para todas as APIs não quebrarem
+  const termoSeguro = encodeURIComponent(query); 
+
+  // 1. Busca Jogos (RAWG)
   try {
-    if (tipo === 'anime') {
-      const resposta = await fetch(`https://api.jikan.moe/v4/anime?q=${query}&limit=5`);
-      if (!resposta.ok) throw new Error("Erro Jikan");
-      const json = await resposta.json();
-      
-      // Padronizamos a resposta para que a interface não precise adivinhar onde está o título ou a capa
-      return (json.data || []).map(item => ({
-        id: item.mal_id,
+    const chaveRawg = import.meta.env.VITE_RAWG_API_KEY;
+    const resJogo = await fetch(`https://api.rawg.io/api/games?search=${termoSeguro}&key=${chaveRawg}&page_size=10`);
+    if (resJogo.ok) {
+      const jsonJogo = await resJogo.json();
+      const jogos = (jsonJogo.results || []).map(item => ({
+        id: `jogo_${item.id}`,
+        titulo: item.name,
+        tituloOriginal: item.name, 
+        capaUrl: item.background_image || 'https://via.placeholder.com/220x330?text=Sem+Capa',
+        tipo: 'jogo'
+      }));
+      resultadosGlobais.push(...jogos);
+    }
+  } catch (erro) { console.error("Erro Jogos:", erro); }
+
+  // 2. Busca Filmes (TMDB)
+  try {
+    const chaveTmdb = import.meta.env.VITE_TMDB_API_KEY;
+    const resFilme = await fetch(`https://api.themoviedb.org/3/search/movie?api_key=${chaveTmdb}&query=${termoSeguro}&language=pt-BR`);
+    if (resFilme.ok) {
+      const jsonFilme = await resFilme.json();
+      // Não damos mais o slice(0,3) aqui!
+      const filmes = (jsonFilme.results || []).map(item => ({
+        id: `filme_${item.id}`,
         titulo: item.title,
-        capaUrl: item.images.jpg.image_url,
+        tituloOriginal: item.original_title, // Salva o nome em inglês também
+        capaUrl: item.poster_path ? `https://image.tmdb.org/t/p/w500${item.poster_path}` : 'https://via.placeholder.com/220x330?text=Sem+Capa',
+        tipo: 'filme'
+      }));
+      resultadosGlobais.push(...filmes);
+    }
+  } catch (erro) { console.error("Erro Filmes:", erro); }
+
+  // 3. Busca Séries (TMDB)
+  try {
+    const chaveTmdb = import.meta.env.VITE_TMDB_API_KEY;
+    const resSerie = await fetch(`https://api.themoviedb.org/3/search/tv?api_key=${chaveTmdb}&query=${termoSeguro}&language=pt-BR`);
+    if (resSerie.ok) {
+      const jsonSerie = await resSerie.json();
+      const series = (jsonSerie.results || []).map(item => ({
+        id: `serie_${item.id}`,
+        titulo: item.name,
+        tituloOriginal: item.original_name, // Salva o nome em inglês
+        capaUrl: item.poster_path ? `https://image.tmdb.org/t/p/w500${item.poster_path}` : 'https://via.placeholder.com/220x330?text=Sem+Capa',
+        tipo: 'serie'
+      }));
+      resultadosGlobais.push(...series);
+    }
+  } catch (erro) { console.error("Erro Séries:", erro); }
+
+  // 4. Busca Animes (Kitsu)
+  try {
+    const resAnime = await fetch(`https://kitsu.io/api/edge/anime?filter[text]=${termoSeguro}&page[limit]=10`);
+    if (resAnime.ok) {
+      const jsonAnime = await resAnime.json();
+      const animes = (jsonAnime.data || []).map(item => ({
+        id: `anime_${item.id}`,
+        titulo: item.attributes.canonicalTitle,
+        tituloOriginal: item.attributes.canonicalTitle,
+        capaUrl: item.attributes.posterImage?.medium || 'https://via.placeholder.com/220x330?text=Sem+Capa',
         tipo: 'anime'
       }));
-    } 
-    
-    else if (tipo === 'jogo') {
-      // TODO: Substituir pela URL real do RAWG quando tivermos a chave
-      throw new Error("RAWG não configurado");
+      resultadosGlobais.push(...animes);
     }
+  } catch (erro) { console.error("Erro Animes:", erro); }
 
-    else if (tipo === 'filme') {
-      // TODO: Substituir pela URL real do TMDB quando tivermos a chave
-      throw new Error("TMDB não configurado");
+  // 5. Busca Mangás (Kitsu)
+  try {
+    const resManga = await fetch(`https://kitsu.io/api/edge/manga?filter[text]=${termoSeguro}&page[limit]=10`);
+    if (resManga.ok) {
+      const jsonManga = await resManga.json();
+      const mangas = (jsonManga.data || []).map(item => ({
+        id: `manga_${item.id}`,
+        titulo: item.attributes.canonicalTitle,
+        tituloOriginal: item.attributes.canonicalTitle,
+        capaUrl: item.attributes.posterImage?.medium || 'https://via.placeholder.com/220x330?text=Sem+Capa',
+        tipo: 'manga'
+      }));
+      resultadosGlobais.push(...mangas);
     }
+  } catch (erro) { console.error("Erro Mangás:", erro); }
 
-  } catch (erro) {
-    console.error(`Erro ao buscar ${tipo}, ativando MOCK:`, erro);
-    
-    // Mocks padronizados para o desenvolvimento não parar
-    if (tipo === 'anime') {
-      return [{ id: 31933, titulo: "JoJo's Bizarre Adventure (Mock)", capaUrl: "https://cdn.myanimelist.net/images/anime/3/79156.jpg", tipo: 'anime' }];
-    } else if (tipo === 'jogo') {
-      return [{ id: 1, titulo: "Elden Ring (Mock)", capaUrl: "https://image.api.playstation.com/vulcan/ap/rnd/202110/2000/aGhopp3MHppi7kooGE2Dtt8C.png", tipo: 'jogo' }];
-    } else if (tipo === 'filme') {
-      return [{ id: 2, titulo: "O Senhor dos Anéis (Mock)", capaUrl: "https://image.tmdb.org/t/p/w500/1Xm0WqvzAJWgwMWGQCEepE2JqYS.jpg", tipo: 'filme' }];
+  // 6. Busca Livros (Google Books)
+  try {
+    const chaveGoogle = import.meta.env.VITE_GOOGLE_BOOKS_API_KEY;
+    const resLivro = await fetch(`https://www.googleapis.com/books/v1/volumes?q=${termoSeguro}&key=${chaveGoogle}&maxResults=10`);
+    if (resLivro.ok) {
+      const jsonLivro = await resLivro.json();
+      const livros = (jsonLivro.items || []).map(item => ({
+        id: `livro_${item.id}`,
+        titulo: item.volumeInfo.title,
+        tituloOriginal: item.volumeInfo.title,
+        capaUrl: item.volumeInfo.imageLinks?.thumbnail ? item.volumeInfo.imageLinks.thumbnail.replace('http:', 'https:') : 'https://via.placeholder.com/220x330?text=Sem+Capa',
+        tipo: 'livro'
+      }));
+      resultadosGlobais.push(...livros);
     }
-  }
+  } catch (erro) { console.error("Erro Livros:", erro); }
+
+  // --- O NOVO FILTRO SUPER INTELIGENTE ---
+  
+  const buscaLimpa = query.toLowerCase().trim();
+  const palavrasBusca = buscaLimpa.split(' ');
+
+  // Filtra mantendo se bater com o título traduzido OU com o original
+  let resultadosFiltrados = resultadosGlobais.filter(midia => {
+    const tituloMidia = midia.titulo.toLowerCase();
+    const tituloOrig = (midia.tituloOriginal || "").toLowerCase();
+
+    return palavrasBusca.every(palavra => 
+      tituloMidia.includes(palavra) || tituloOrig.includes(palavra)
+    );
+  });
+
+  // Ordena jogando correspondências idênticas (exatas) para o topo
+  resultadosFiltrados.sort((a, b) => {
+    const tituloA = a.titulo.toLowerCase();
+    const tituloOrigA = (a.tituloOriginal || "").toLowerCase();
+    const tituloB = b.titulo.toLowerCase();
+    const tituloOrigB = (b.tituloOriginal || "").toLowerCase();
+    
+    const aTemExato = tituloA.includes(buscaLimpa) || tituloOrigA.includes(buscaLimpa);
+    const bTemExato = tituloB.includes(buscaLimpa) || tituloOrigB.includes(buscaLimpa);
+
+    if (aTemExato && !bTemExato) return -1; 
+    if (!aTemExato && bTemExato) return 1;  
+    return 0; 
+  });
+
+  // Só agora, depois da inteligência fazer todo o trabalho pesado, cortamos para exibir apenas os 12 melhores na tela
+  return resultadosFiltrados.slice(0, 12);
 }

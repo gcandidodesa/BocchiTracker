@@ -18,6 +18,7 @@ const formularioEdicao = ref(null)
 const midiasAgrupadas = computed(() => {
   const categorias = {
     Animes: [],
+    Mangás: [],
     Jogos: [],
     Filmes: [],
     Séries: [],
@@ -27,6 +28,7 @@ const midiasAgrupadas = computed(() => {
   // Distribui as mídias salvas nas suas respectivas prateleiras
   minhasMidias.value.forEach(midia => {
     if (midia.tipo === 'anime') categorias.Animes.push(midia)
+    else if (midia.tipo === 'manga') categorias.Mangás.push(midia)
     else if (midia.tipo === 'jogo') categorias.Jogos.push(midia)
     else if (midia.tipo === 'filme') categorias.Filmes.push(midia)
     else if (midia.tipo === 'serie') categorias.Séries.push(midia)
@@ -409,4 +411,14 @@ input[type="number"], textarea {
 .acoes-modal { display: flex; justify-content: flex-end; gap: 1rem; margin-top: 1rem; }
 .btn-cancelar { background: transparent; border: 1px solid #ff4444; color: #ff4444; padding: 0.5rem 1rem; border-radius: 6px; cursor: pointer; }
 .btn-salvar { background: var(--cor-primaria); color: #111; padding: 0.5rem 1rem; border-radius: 6px; cursor: pointer; font-weight: bold;}
+
+/* Cores por tipo para facilitar a batida de olho */
+.badge-tipo.anime { color: #FFB6C1; } 
+.badge-tipo.jogo { color: #38bdf8; }  
+.badge-tipo.filme { color: #FFFACD; } 
+/* Novas cores: */
+.badge-tipo.serie { color: #c084fc; } /* Roxo */
+.badge-tipo.manga { color: #fb923c; } /* Laranja */
+.badge-tipo.livro { color: #a3e635; } /* Verde limão */
+
 </style>
