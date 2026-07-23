@@ -122,21 +122,30 @@ export async function buscarOmniMidia(query) {
     );
   });
 
-  // Ordena jogando correspondências idênticas (exatas) para o topo
+  // Ordenação em Níveis de Relevância
   resultadosFiltrados.sort((a, b) => {
     const tituloA = a.titulo.toLowerCase();
     const tituloOrigA = (a.tituloOriginal || "").toLowerCase();
     const tituloB = b.titulo.toLowerCase();
     const tituloOrigB = (b.tituloOriginal || "").toLowerCase();
     
-    const aTemExato = tituloA.includes(buscaLimpa) || tituloOrigA.includes(buscaLimpa);
-    const bTemExato = tituloB.includes(buscaLimpa) || tituloOrigB.includes(buscaLimpa);
+    // 1. PRIORIDADE MÁXIMA: O nome é EXATAMENTE o que o usuário digitou (Anime/Mangá/Série principal)
+    const aExato = tituloA === buscaLimpa || tituloOrigA === buscaLimpa;
+    const bExato = tituloB === buscaLimpa || tituloOrigB === buscaLimpa;
 
-    if (aTemExato && !bTemExato) return -1; 
-    if (!aTemExato && bTemExato) return 1;  
-    return 0; 
+    if (aExato && !bExato) return -1; 
+    if (!aExato && bExato) return 1;  
+
+    // 2. PRIORIDADE MÉDIA: O título contém a frase junta (Ex: "One Piece: Red")
+    const aContem = tituloA.includes(buscaLimpa) || tituloOrigA.includes(buscaLimpa);
+    const bContem = tituloB.includes(buscaLimpa) || tituloOrigB.includes(buscaLimpa);
+
+    if (aContem && !bContem) return -1;
+    if (!aContem && bContem) return 1;
+    
+    return 0; // Empate: mantém a ordem de chegada
   });
 
-  // Só agora, depois da inteligência fazer todo o trabalho pesado, cortamos para exibir apenas os 12 melhores na tela
-  return resultadosFiltrados.slice(0, 12);
+  // Aumentamos o corte para 24 vagas para caber tudo de franquias gigantes!
+  return resultadosFiltrados.slice(0, 24);
 }

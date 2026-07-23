@@ -4,12 +4,15 @@ import { ref, computed } from 'vue'
 import { buscarOmniMidia } from '../services/api'
 import { useRouter } from 'vue-router'
 import { db, collection, addDoc } from '../services/firebase'
+import { usePerfilStore } from '../stores/perfilStore'
 
 const router = useRouter()
+const perfilStore = usePerfilStore()
 const termoBusca = ref('')
 const resultados = ref([])
 const carregando = ref(false)
 const filtroTipo = ref('todos')
+const mensagemToast = ref('')
 
 const midiaSelecionada = ref(null)
 const formulario = ref({
@@ -62,25 +65,40 @@ function cancelarSelecao() {
 
 async function salvarMidia() {
   try {
+
+    const perfilAtual = perfilStore.perfilAtivo || 'Padrao';
     const novaMidia = {
       titulo: midiaSelecionada.value.titulo,
       tipo: midiaSelecionada.value.tipo,
       capaUrl: midiaSelecionada.value.capaUrl,
       status: formulario.value.status,
-      nota: formulario.value.nota || null,
+      nota: formulario.value.nota !== '' ? formulario.value.nota : null, // Garante que envia null se não der nota
       resenha: formulario.value.resenha || "",
-      dataAdicao: new Date()
+      dataAdicao: new Date(),
+      perfil: perfilAtual
     };
 
     await addDoc(collection(db, "midias"), novaMidia);
     
-    alert("Salvo com sucesso!");
+    // Limpa a tela
     midiaSelecionada.value = null;
     termoBusca.value = '';
     resultados.value = [];
+    
+    // Mostra o Toast de sucesso
+    mensagemToast.value = "Mídia salva na sua coleção!";
+    
+    // Apaga o Toast automaticamente após 3 segundos
+    setTimeout(() => {
+      mensagemToast.value = '';
+    }, 3000);
+
   } catch (erro) {
     console.error("Erro ao salvar:", erro);
-    alert("Deu erro ao salvar!");
+    mensagemToast.value = "Erro ao salvar a mídia!";
+    setTimeout(() => {
+      mensagemToast.value = '';
+    }, 3000);
   }
 }
 </script>
@@ -175,8 +193,19 @@ async function salvarMidia() {
           </div>
 
           <div class="grupo-campo">
-            <label>Nota (1 a 10):</label>
-            <input type="number" min="1" max="10" v-model="formulario.nota" />
+            <label>Avaliação (0 a 5):</label>
+            <!-- A classe tema-bocchi foi removida daqui por enquanto -->
+            <div class="seletor-nota">
+              <button 
+                v-for="n in 6" 
+                :key="n - 1"
+                type="button"
+                :class="{ ativo: formulario.nota === (n - 1) }"
+                @click="formulario.nota = (n - 1)"
+              >
+                {{ n - 1 }} <span class="icone-nota">★</span>
+              </button>
+            </div>
           </div>
 
           <div class="grupo-campo">
@@ -190,6 +219,11 @@ async function salvarMidia() {
           </div>
         </div>
       </div>
+      <Transition name="fade">
+        <div v-if="mensagemToast" class="toast-aviso">
+          {{ mensagemToast }}
+        </div>
+      </Transition>
     </main>
   </div>
 </template>
@@ -351,4 +385,109 @@ input[type="number"], textarea {
 .acoes-form { display: flex; gap: 1rem; justify-content: flex-end; margin-top: 1rem; }
 .btn-cancelar { background: transparent; border: 1px solid #ff4444; color: #ff4444; padding: 0.8rem 1.5rem; border-radius: 8px; cursor: pointer; font-weight: bold;}
 .btn-salvar { background: var(--cor-primaria); color: #111; padding: 0.8rem 1.5rem; border-radius: 8px; cursor: pointer; font-weight: bold; border: none;}
+
+/* =========================================
+   Estilos do Toast (Aviso Flutuante)
+   ========================================= */
+.toast-aviso {
+  position: fixed;
+  bottom: 30px;
+  right: 30px;
+  background-color: var(--cor-primaria);
+  color: #111; /* Cor escura para contrastar com a primária */
+  padding: 1rem 1.5rem;
+  border-radius: 8px;
+  font-weight: bold;
+  font-size: 1.1rem;
+  box-shadow: 0 8px 20px rgba(0,0,0,0.4);
+  z-index: 1000;
+}
+
+/* Classes mágicas da <Transition> do Vue para o Toast */
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.4s ease, transform 0.4s ease;
+}
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+  transform: translateY(20px); /* Faz o balão surgir subindo de baixo */
+}
+
+/* =========================================
+   1. Estilos Base (Tema Padrão)
+   ========================================= */
+.seletor-nota {
+  display: flex;
+  gap: 0.8rem;
+  flex-wrap: wrap;
+}
+
+.seletor-nota button {
+  min-width: 55px; 
+  height: 42px;
+  border-radius: 10px;
+  border: 2px solid var(--cor-primaria);
+  background: rgba(0, 0, 0, 0.3);
+  color: var(--cor-texto);
+  font-weight: 800;
+  font-size: 1.1rem;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+}
+
+.icone-nota {
+  font-size: 1.2rem;
+  color: #666;
+  transition: color 0.3s;
+}
+
+.seletor-nota button:hover {
+  background: rgba(255, 255, 255, 0.1);
+  transform: translateY(-2px);
+}
+
+/* Estado Ativo - Brilho Padrão */
+.seletor-nota button.ativo {
+  background: var(--cor-primaria);
+  color: #111; 
+  border-color: var(--cor-primaria);
+  transform: scale(1.1) translateY(-2px);
+  /* Brilho usando a sua cor primária original */
+  box-shadow: 0 5px 15px var(--cor-primaria); 
+}
+
+.seletor-nota button.ativo .icone-nota {
+  color: #ffd900; 
+}
+
+
+/* =========================================
+   2. Modificadores (Tema Bocchi)
+   ========================================= */
+/* Só aplica esse brilho e essas cores se a classe .tema-bocchi estiver presente */
+.seletor-nota.tema-bocchi button {
+  border-color: #FFB6C1;
+}
+
+.seletor-nota.tema-bocchi button:hover {
+  background: rgba(255, 182, 193, 0.1);
+}
+
+.seletor-nota.tema-bocchi button.ativo {
+  background: #FFB6C1;
+  color: #111; 
+  border-color: #FFB6C1;
+  /* Brilho rosa neon exclusivo */
+  box-shadow: 0 5px 15px rgba(255, 182, 193, 0.6); 
+}
+
+.seletor-nota.tema-bocchi button.ativo .icone-nota {
+  color: #e11d48; /* Vermelho/Rosa escuro para a estrela */
+}
+
 </style>
