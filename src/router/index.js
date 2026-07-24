@@ -6,7 +6,7 @@ import AdicionarMidia from "../views/AdicionarMidia.vue";
 import Configuracoes from "../views/Configuracoes.vue";
 
 const router = createRouter({
-    history: createWebHistory(),
+    history: createWebHistory(import.meta.env.BASE_URL),
     routes: [
         {path: '/', component: SelecionarPerfil},
         {path: '/dashboard', component:Dashboard},
