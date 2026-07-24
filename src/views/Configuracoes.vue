@@ -1,443 +1,792 @@
-<!-- src/views/Configuracoes.vue -->
 <script setup>
-import { ref, watch } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { usePerfilStore } from '../stores/perfilStore'
 
 const router = useRouter()
 const perfilStore = usePerfilStore()
 
-// --- ESTADOS DO PERFIL ---
-// Carregamos os dados atuais da store (ajuste se suas variáveis tiverem nomes diferentes)
-const nomeEditado = ref(perfilStore.nomeExibicao)
-const fotoEditada = ref(perfilStore.fotoUrl) 
-const fazendoUpload = ref(false)
-
-watch(() => perfilStore.nomeExibicao, (novoNome) => {nomeEditado.value = novoNome})
-watch(() => perfilStore.fotoUrl, (novaFoto) => {fotoEditada.value = novaFoto})
-
-//-- CONFIGURAÇÕES CLOUDINARY --
+// Lembre-se de manter suas chaves do Cloudinary aqui!
 const CLOUD_NAME = 'dkg5zne5i';
 const UPLOAD_PRESET = 'Bocchi-Tracker';
 
-
-// --- ESTADOS DO TEMA ---
-const temaSelecionado = ref(perfilStore.temaAtual || 'padrao')
-const modalTemaAberto = ref(false)
+const nomeEditado = ref('')
+const fotoEditada = ref('')
+const fazendoUpload = ref(false)
 const mensagemToast = ref('')
 
-watch (() => perfilStore.temaAtual, (novoTema) => {temaSelecionado.value - novoTema})
+const modalTemaAberto = ref(false)
+const temaEditado = ref({
+  nome: '', 
+  fundoApp: '',
+  fundoModal: '',
+  iconeEstrela: '',
+  corFundoFallback: '#0f172a',
+  corBorda: '#1e293b',
+  corPrimaria: '#38bdf8',
+  corTexto: '#f8fafc'
+})
 
-// --- FUNÇÕES ---
+onMounted(() => {
+  nomeEditado.value = perfilStore.nomeExibicao
+  fotoEditada.value = perfilStore.fotoUrl || `https://ui-avatars.com/api/?name=${perfilStore.nomeExibicao}&background=333&color=fff`
+})
+
+async function salvarPerfil() {
+  await perfilStore.atualizarPerfil(nomeEditado.value, fotoEditada.value)
+  mensagemToast.value = "Perfil salvo com sucesso!"
+  setTimeout(() => { mensagemToast.value = '' }, 3000)
+}
 
 async function fazerUploadImagem(event) {
-  console.log("1. Botão de upload clicado!");
-
   const arquivo = event.target.files[0];
-  if (!arquivo) {
-    console.log("Nenhum arquivo selecionado.");
-    return;
-  }
-
-  console.log("2. Arquivo selecionado:", arquivo.name, "| Tamanho:", arquivo.size);
+  if (!arquivo) return;
 
   if (arquivo.size > 5 * 1024 * 1024) {
-    console.warn("Arquivo muito grande!");
     mensagemToast.value = "A imagem deve ter no máximo 5MB!";
-    event.target.value = ''; // Limpa o input
-    setTimeout(() => { mensagemToast.value = '' }, 3000);
-    return;
-  }
-
-  // Verificação de segurança das credenciais
-  if (CLOUD_NAME === 'SEU_CLOUD_NAME_AQUI' || UPLOAD_PRESET === 'SEU_UPLOAD_PRESET_AQUI') {
-    console.error("ERRO: As chaves do Cloudinary não foram configuradas no código!");
-    mensagemToast.value = "Configure as chaves do Cloudinary!";
+    event.target.value = '';
     setTimeout(() => { mensagemToast.value = '' }, 3000);
     return;
   }
 
   fazendoUpload.value = true;
+  mensagemToast.value = "Enviando imagem...";
   const formData = new FormData();
   formData.append('file', arquivo);
   formData.append('upload_preset', UPLOAD_PRESET);
 
   try {
-    console.log("3. Enviando para o Cloudinary...");
     const resposta = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`, {
       method: 'POST',
       body: formData
     });
 
     const dados = await resposta.json();
-    console.log("4. Resposta do Cloudinary recebida:", dados);
 
     if (dados.secure_url) {
       fotoEditada.value = dados.secure_url; 
-      
-      console.log("5. Salvando no Firebase...");
       await perfilStore.atualizarPerfil(nomeEditado.value, fotoEditada.value);
-      
       mensagemToast.value = "Foto atualizada e salva no perfil!";
     } else {
-      throw new Error("Falha ao gerar link: " + (dados.error?.message || "Erro desconhecido"));
+      throw new Error("Falha ao gerar link");
     }
   } catch (erro) {
     console.error("Erro no upload:", erro);
     mensagemToast.value = "Erro ao enviar a imagem.";
   } finally {
     fazendoUpload.value = false;
-    
-    // MUDANÇA CRUCIAL: Limpa a memória do input para permitir o upload da mesma foto de novo
     event.target.value = ''; 
-    
     setTimeout(() => { mensagemToast.value = '' }, 3000);
   }
 }
 
+async function aplicarTemaPredefinido(nomeDoTema) {
+  await perfilStore.atualizarTema(nomeDoTema); 
+}
 
-async function salvarPerfil() {
-if (!nomeEditado.value) {
-    mensagemToast.value = "O nome não pode ser vazio!";
+async function fazerUploadTema(event, chave) {
+  const arquivo = event.target.files[0];
+  if (!arquivo) return;
+
+  fazendoUpload.value = true;
+  mensagemToast.value = "Enviando imagem do tema...";
+  const formData = new FormData();
+  formData.append('file', arquivo);
+  formData.append('upload_preset', UPLOAD_PRESET);
+
+  try {
+    const resposta = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`, {
+      method: 'POST',
+      body: formData
+    });
+    const dados = await resposta.json();
+    if (dados.secure_url) {
+      temaEditado.value[chave] = dados.secure_url;
+      mensagemToast.value = "Imagem carregada com sucesso!";
+    }
+  } catch (erro) {
+    console.error("Erro no upload do tema:", erro);
+    mensagemToast.value = "Erro ao enviar a imagem do tema.";
+  } finally {
+    fazendoUpload.value = false;
+    // O event.target.value = ''; foi removido daqui para o nome não piscar!
+    setTimeout(() => { mensagemToast.value = '' }, 3000);
+  }
+}
+
+async function salvarTemaCustomizado() {
+  const nomeDigitado = temaEditado.value.nome.trim();
+  
+  if (!nomeDigitado) {
+    mensagemToast.value = "Por favor, dê um nome para o seu tema!";
     setTimeout(() => { mensagemToast.value = '' }, 3000);
     return;
   }
-  await perfilStore.atualizarPerfil(nomeEditado.value, fotoEditada.value);
+
+  await perfilStore.atualizarTema(nomeDigitado, temaEditado.value);
+  modalTemaAberto.value = false;
   
-  mensagemToast.value = "Perfil atualizado com sucesso!";
+  temaEditado.value = { nome: '', fundoApp: '', fundoModal: '', iconeEstrela: '', corFundoFallback: '#0f172a', corBorda: '#1e293b', corPrimaria: '#38bdf8', corTexto: '#f8fafc' };
+
+  mensagemToast.value = "Tema salvo com sucesso!";
   setTimeout(() => { mensagemToast.value = '' }, 3000);
 }
 
-function aplicarTemaPredefinido(nomeTema) {
-  temaSelecionado.value = nomeTema
-  perfilStore.aplicarTema(nomeTema);
+function editarTemaCustomizado(nomeTema, config) {
+  temaEditado.value = {
+    nome: nomeTema, 
+    fundoApp: config.fundoApp || '',
+    fundoModal: config.fundoModal || '',
+    iconeEstrela: config.iconeEstrela || '',
+    corFundoFallback: config.corFundoFallback || '#0f172a',
+    corBorda: config.corBorda || '#1e293b',
+    corPrimaria: config.corPrimaria || '#38bdf8',
+    corTexto: config.corTexto || '#f8fafc'
+  };
+  modalTemaAberto.value = true;
+}
+
+// Variáveis para a modal de exclusão
+const modalExclusaoAberto = ref(false)
+const temaParaExcluir = ref('')
+
+// Prepara a exclusão abrindo a modal
+function tentarExcluirTema(nomeTema) {
+  temaParaExcluir.value = nomeTema
+  modalExclusaoAberto.value = true
+}
+
+// Cancela a exclusão
+function cancelarExclusaoTema() {
+  modalExclusaoAberto.value = false
+  temaParaExcluir.value = ''
+}
+
+// Confirma e deleta de fato
+async function confirmarExclusaoTema() {
+  const nomeTema = temaParaExcluir.value
+  delete perfilStore.temasCustomizados[nomeTema];
   
-  mensagemToast.value = `Tema ${nomeTema} aplicado!`
-  setTimeout(() => { mensagemToast.value = '' }, 3000)
-}
+  if(perfilStore.temaAtual === nomeTema) {
+    await perfilStore.atualizarTema('padrao');
+  } else {
+    await perfilStore.salvarConfiguracoesNoFirebase();
+  }
 
-function abrirCriacaoTema() {
-  modalTemaAberto.value = true
-}
-
-function fecharModalTema() {
-  modalTemaAberto.value = false
-}
-
-function salvarTemaCustomizado() {
-  // Lógica futura para salvar as cores escolhidas
-  fecharModalTema()
-  mensagemToast.value = "Tema customizado salvo!"
-  setTimeout(() => { mensagemToast.value = '' }, 3000)
+  modalExclusaoAberto.value = false;
+  temaParaExcluir.value = '';
+  
+  mensagemToast.value = "Tema excluído com sucesso!";
+  setTimeout(() => { mensagemToast.value = '' }, 3000);
 }
 </script>
 
 <template>
-  <div class="configuracoes-container">
-    <header class="cabecalho-pagina">
-      <button class="btn-voltar" @click="router.back()">← Voltar</button>
-      <h2>Configurações</h2>
+  <div class="config-container">
+    <header class="cabecalho-config">
+      <button class="btn-voltar" @click="router.push('/dashboard')">← Voltar</button>
+      <h1>Configurações</h1>
     </header>
 
-    <main class="grid-configuracoes">
-      
-      <!-- SEÇÃO 1: EDIÇÃO DE PERFIL -->
-      <section class="cartao-config">
-        <h3>👤 Meu Perfil</h3>
-        <p class="descricao-config">Atualize suas informações básicas.</p>
+    <div class="secao-config">
+      <h2>👤 Meu Perfil</h2>
+      <p class="subtitulo">Atualize suas informações básicas.</p>
+
+      <div class="form-perfil">
+        <div class="avatar-container">
+          <img :src="fotoEditada" alt="Sua foto de perfil" class="avatar-preview">
+        </div>
         
-        <div class="form-perfil">
-          <!-- Preview da Foto -->
-          <div class="foto-preview-area">
-            <img 
-              :src="fotoEditada || `https://ui-avatars.com/api/?name=${nomeEditado}&background=333&color=fff`" 
-              alt="Preview do Avatar" 
-              class="avatar-preview"
-            >
+        <div class="campos-perfil">
+          <div class="grupo-input-perfil">
+            <label>Nome do Perfil</label>
+            <input type="text" v-model="nomeEditado" class="input-texto" placeholder="Seu nome aqui">
           </div>
 
-          <div class="campos-perfil">
-            <div class="grupo-campo">
-              <label>Nome do Perfil</label>
-              <input type="text" v-model="nomeEditado" placeholder="Como quer ser chamado?" />
-            </div>
-
-            <div class="grupo-campo">
-              <label>Foto de Perfil</label>
-              <input
-                type="file"
-                id = "input-foto"
-                accept="image/*"
-                @change="fazerUploadImagem"
-                class="input-escondido" 
-                />
-
-                <label for="input-foto" class="btn-upload" :class="{'carregando': fazendoUpload}">
-                    <span v-if="fazendoUpload">⏳ Enviando...</span>
-                    <span v-else>📁 Escolher Arquivo</span>
-                </label>
-            </div>
-            
-            <button class="btn-salvar-perfil" @click="salvarPerfil" :disabled="fazendoUpload">Salvar Perfil</button>
-          </div>
-        </div>
-      </section>
-
-      <!-- SEÇÃO 2: APARÊNCIA E TEMAS -->
-      <section class="cartao-config">
-        <h3>🎨 Aparência</h3>
-        <p class="descricao-config">Personalize a interface do seu aplicativo.</p>
-
-        <div class="grade-temas">
-          <!-- Tema Padrão -->
-          <div 
-            class="card-tema" 
-            :class="{ ativo: temaSelecionado === 'padrao' }"
-            @click="aplicarTemaPredefinido('padrao')"
-          >
-            <div class="preview-cores padrao"></div>
-            <p>Tema Padrão</p>
-          </div>
-
-          <!-- Tema Bocchi -->
-          <div 
-            class="card-tema" 
-            :class="{ ativo: temaSelecionado === 'Bocchi' }"
-            @click="aplicarTemaPredefinido('Bocchi')"
-          >
-            <div class="preview-cores bocchi"></div>
-            <p>Tema Bocchi</p>
-          </div>
-
-          <!-- Botão Criar Novo Tema -->
-          <div class="card-tema btn-novo-tema" @click="abrirCriacaoTema">
-            <div class="icone-novo">+</div>
-            <p>Criar Novo</p>
-          </div>
-        </div>
-      </section>
-
-    </main>
-
-    <!-- MODAL DO TEMA CUSTOMIZÁVEL -->
-    <Transition name="fade">
-      <div v-if="modalTemaAberto" class="modal-overlay" @click.self="fecharModalTema">
-        <div class="modal-conteudo">
-          <header class="modal-cabecalho">
-            <h3>Criar Tema Customizado</h3>
-            <button class="btn-fechar" @click="fecharModalTema">✕</button>
-          </header>
-
-          <div class="modal-corpo">
-            <p class="aviso-construcao">🚧 Área em construção 🚧<br>Aqui colocaremos os seletores de cores primária, fundo e cards na próxima etapa!</p>
-            
-            <!-- Esqueleto para a futura integração de cores -->
-            <div class="grupo-campo inativo">
-              <label>Nome do Tema:</label>
-              <input type="text" placeholder="Ex: Cyberpunk Red" disabled />
+          <div class="grupo-input-perfil">
+            <label>Foto de Perfil</label>
+            <div class="input-arquivo-customizado">
+              <input 
+                type="file" 
+                id="input-foto" 
+                accept="image/*" 
+                @change="fazerUploadImagem" 
+                class="input-escondido"
+              />
+              <label for="input-foto" class="btn-arquivo">
+                <span v-if="fazendoUpload">⏳ Enviando...</span>
+                <span v-else>📁 Escolher Arquivo</span>
+              </label>
             </div>
           </div>
-
-          <footer class="modal-rodape">
-            <button class="btn-cancelar" @click="fecharModalTema">Cancelar</button>
-            <button class="btn-salvar" @click="salvarTemaCustomizado">Criar Tema</button>
-          </footer>
+          
+          <button class="btn-salvar-perfil" @click="salvarPerfil">Salvar Perfil</button>
         </div>
       </div>
-    </Transition>
+    </div>
 
-    <!-- TOAST DE NOTIFICAÇÃO -->
-    <Transition name="fade">
-      <div v-if="mensagemToast" class="toast-aviso">
-        {{ mensagemToast }}
+    <div class="secao-config">
+      <h2>🎨 Aparência</h2>
+      <p class="subtitulo">Personalize a interface do seu aplicativo.</p>
+
+      <div class="grade-temas">
+        <div 
+          class="cartao-tema-padrao" 
+          @click="aplicarTemaPredefinido('padrao')"
+          :class="{ ativo: perfilStore.temaAtual === 'padrao' }"
+        >
+          <div class="preview-tema-padrao bg-padrao"></div>
+          <p>Tema Padrão</p>
+        </div>
+
+        <div 
+          class="cartao-tema-padrao" 
+          @click="aplicarTemaPredefinido('Bocchi')"
+          :class="{ ativo: perfilStore.temaAtual === 'Bocchi' }"
+        >
+          <div class="preview-tema-padrao bg-bocchi"></div>
+          <p>Tema Bocchi</p>
+        </div>
+
+        <div 
+          class="cartao-tema-custom" 
+          v-for="(config, nomeTema) in perfilStore.temasCustomizados" 
+          :key="nomeTema"
+          :class="{ ativo: perfilStore.temaAtual === nomeTema }"
+        >
+          <div class="preview-tema-custom" 
+               :style="{ 
+                  backgroundColor: config.corFundoFallback,
+                  borderColor: config.corBorda,
+                  backgroundImage: config.fundoApp ? `url(${config.fundoApp})` : 'none'
+               }"
+               @click="aplicarTemaPredefinido(nomeTema)">
+            <div v-if="config.fundoApp" class="overlay-texto"></div>
+          </div>
+          
+          <p>{{ nomeTema }}</p>
+
+          <div class="acoes-tema">
+            <button class="btn-icone" @click.stop="editarTemaCustomizado(nomeTema, config)" title="Editar">✏️</button>
+            <button class="btn-icone perigo" @click.stop="tentarExcluirTema(nomeTema)" title="Excluir">🗑️</button>
+          </div>
+        </div>
+
+        <div class="cartao-tema-padrao btn-criar-novo" @click="modalTemaAberto = true">
+          <div class="icone-mais">+</div>
+          <p>Criar Novo</p>
+        </div>
       </div>
-    </Transition>
+    </div>
 
+    <div v-if="mensagemToast" class="toast-mensagem">
+      {{ mensagemToast }}
+    </div>
+
+    <div v-if="modalTemaAberto" class="modal-overlay">
+      <div class="modal-conteudo">
+        <h2>{{ temaEditado.nome ? 'Editar Tema' : 'Criar Tema Customizado' }}</h2>
+
+        <!-- ============================================== -->
+        <!-- ÁREA DE PREVIEW EM TEMPO REAL -->
+        <!-- ============================================== -->
+        <div class="preview-live-container" :style="{ 
+          backgroundColor: temaEditado.corFundoFallback, 
+          backgroundImage: temaEditado.fundoApp ? `url(${temaEditado.fundoApp})` : 'none',
+          color: temaEditado.corTexto
+        }">
+          <div class="preview-live-modal" :style="{
+            backgroundColor: 'var(--cor-card, #1e293b)',
+            backgroundImage: temaEditado.fundoModal ? `url(${temaEditado.fundoModal})` : 'none',
+            borderColor: temaEditado.corBorda
+          }">
+            <h4 :style="{ color: temaEditado.corTexto }">Preview Interativo</h4>
+            
+            <div class="preview-live-midia" :style="{ borderColor: temaEditado.corPrimaria }">
+              <div class="preview-live-capa"></div>
+              <div class="preview-live-info">
+                <span :style="{ color: temaEditado.corTexto }">Exemplo Mídia</span>
+                <div class="preview-live-nota" :style="{ backgroundColor: temaEditado.corPrimaria, color: '#111' }">
+                  5
+                  <img v-if="temaEditado.iconeEstrela" :src="temaEditado.iconeEstrela" class="icone-estrela-custom" alt="★">
+                  <span v-else>★</span>
+                </div>
+              </div>
+            </div>
+            
+            <button class="preview-live-btn" :style="{ backgroundColor: temaEditado.corPrimaria, color: '#111' }">
+              Botão Destaque
+            </button>
+          </div>
+        </div>
+        <!-- ============================================== -->
+
+        <div class="grupo-input">
+          <label>Nome do Tema *</label>
+          <input type="text" v-model="temaEditado.nome" placeholder="Ex: Meu Tema Dark" class="input-texto-modal" :disabled="!!perfilStore.temasCustomizados[temaEditado.nome]">
+        </div>
+
+        <div class="grupo-input">
+          <label>Plano de Fundo do App (Imagem)</label>
+          <input type="file" accept="image/*" @change="(e) => fazerUploadTema(e, 'fundoApp')">
+        </div>
+
+        <div class="grupo-input">
+          <label>Plano de Fundo das Modais (Imagem)</label>
+          <input type="file" accept="image/*" @change="(e) => fazerUploadTema(e, 'fundoModal')">
+        </div>
+
+        <div class="grupo-input">
+          <label>Ícone das Estrelas das Notas (Imagem)</label>
+          <input type="file" accept="image/*" @change="(e) => fazerUploadTema(e, 'iconeEstrela')">
+        </div>
+
+        <hr>
+        <p>Ajuste as cores da interface:</p>
+
+        <div class="cores-container">
+          <div class="grupo-input">
+            <label>Fundo</label>
+            <input type="color" v-model="temaEditado.corFundoFallback">
+          </div>
+          <div class="grupo-input">
+            <label>Bordas</label>
+            <input type="color" v-model="temaEditado.corBorda">
+          </div>
+          <div class="grupo-input">
+            <label>Destaque</label>
+            <input type="color" v-model="temaEditado.corPrimaria">
+          </div>
+          <div class="grupo-input">
+            <label>Texto</label>
+            <input type="color" v-model="temaEditado.corTexto">
+          </div>
+        </div>
+
+        <div class="botoes-modal">
+          <button class="btn-cancelar" @click="modalTemaAberto = false">Cancelar</button>
+          <button class="btn-salvar" @click="salvarTemaCustomizado">Salvar Tema</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- MODAL DE CONFIRMAÇÃO DE EXCLUSÃO DO TEMA -->
+    <div v-if="modalExclusaoAberto" class="modal-overlay" @click.self="cancelarExclusaoTema">
+      <div class="modal-conteudo" style="max-width: 400px; text-align: center;">
+        <h3 style="color: #ff6b6b; margin: 0 0 10px 0; font-size: 1.5rem;">⚠️ Atenção</h3>
+        <p style="font-size: 1rem; margin-bottom: 5px;">Tem certeza que deseja excluir o tema <strong>"{{ temaParaExcluir }}"</strong>?</p>
+        <p style="font-size: 0.85rem; opacity: 0.7;">Esta ação não pode ser desfeita.</p>
+        
+        <div class="botoes-modal" style="justify-content: center; margin-top: 1.5rem;">
+          <button class="btn-cancelar" @click="cancelarExclusaoTema">Cancelar</button>
+          <!-- Botão vermelho para confirmar a exclusão -->
+          <button class="btn-salvar" style="background-color: #ff6b6b; color: #fff;" @click="confirmarExclusaoTema">Sim, Excluir</button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
 <style scoped>
-/* =========================================
-   Layout Base das Configurações
-   ========================================= */
-.configuracoes-container {
+.config-container {
   padding: 2rem;
-  max-width: 900px;
+  max-width: 800px;
   margin: 0 auto;
+  color: var(--cor-texto, #f8fafc);
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
 }
 
-.cabecalho-pagina {
+.config-container * { font-family: inherit; }
+
+.cabecalho-config {
   display: flex;
   align-items: center;
-  gap: 2rem;
+  gap: 1rem;
   margin-bottom: 2rem;
 }
 
-.cabecalho-pagina h2 { margin: 0; font-size: 2rem; color: var(--cor-texto); }
-.btn-voltar { background: transparent; border: 1px solid var(--cor-primaria); color: var(--cor-texto); padding: 0.5rem 1rem; border-radius: 6px; cursor: pointer; transition: all 0.2s; }
-.btn-voltar:hover { background: var(--cor-primaria); color: #111; }
-
-.grid-configuracoes {
-  display: flex;
-  flex-direction: column;
-  gap: 2rem;
+.btn-voltar {
+  background: transparent;
+  color: var(--cor-primaria, #38bdf8);
+  border: 1px solid var(--cor-primaria, #38bdf8);
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-weight: 600;
 }
 
-/* =========================================
-   Cartões de Configuração (Seções)
-   ========================================= */
-.cartao-config {
-  background: var(--cor-card);
+.btn-voltar:hover {
+  background: var(--cor-primaria, #38bdf8);
+  color: #111;
+}
+
+.secao-config {
+  background-color: var(--cor-card, #1e293b);
+  background-image: var(--bg-modal-custom, none);
+  background-size: cover;
   padding: 2rem;
   border-radius: 12px;
-  box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+  margin-bottom: 2rem;
+  border: 1px solid var(--cor-borda-custom, transparent);
 }
 
-.cartao-config h3 { margin: 0 0 0.5rem 0; font-size: 1.4rem; color: var(--cor-primaria); display: flex; align-items: center; gap: 0.5rem; }
-.descricao-config { color: #aaa; margin-bottom: 2rem; font-size: 0.95rem; }
+.subtitulo { color: var(--cor-texto, #888); margin-bottom: 2rem; font-size: 0.9rem; }
 
-/* =========================================
-   Formulário de Perfil
-   ========================================= */
-.form-perfil {
-  display: flex;
-  gap: 2rem;
-  align-items: flex-start;
-  flex-wrap: wrap; /* Responsivo para telas menores */
-}
-
-.foto-preview-area {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 1rem;
-}
-
+.form-perfil { display: flex; gap: 2rem; align-items: flex-start; }
+.avatar-container { flex-shrink: 0; }
 .avatar-preview {
   width: 120px;
   height: 120px;
   border-radius: 50%;
   object-fit: cover;
-  border: 3px solid var(--cor-primaria);
-  box-shadow: 0 0 15px rgba(0,0,0,0.3);
+  border: 3px solid var(--cor-primaria, #38bdf8);
 }
 
-.campos-perfil {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 1.5rem;
-  min-width: 250px;
+.campos-perfil { display: flex; flex-direction: column; gap: 1.5rem; width: 100%; }
+.grupo-input-perfil { display: flex; flex-direction: column; gap: 0.5rem; }
+
+.input-texto {
+  background-color: rgba(0, 0, 0, 0.2);
+  color: var(--cor-texto, #f8fafc);
+  border: 1px solid var(--cor-borda-custom, #333);
+  padding: 10px;
+  border-radius: 8px;
+  outline: none;
 }
 
-.grupo-campo { display: flex; flex-direction: column; gap: 0.5rem; font-weight: bold; }
-input { padding: 0.8rem; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); background: rgba(0,0,0,0.2); color: var(--cor-texto); font-family: inherit; width: 100%; box-sizing: border-box; }
-input:focus { outline: none; border-color: var(--cor-primaria); }
+.input-escondido { display: none; }
+
+.btn-arquivo {
+  display: inline-block;
+  background-color: transparent;
+  color: var(--cor-texto, #fff);
+  border: 1px dashed var(--cor-primaria, #38bdf8);
+  padding: 10px 20px;
+  border-radius: 8px;
+  cursor: pointer;
+  text-align: center;
+  transition: all 0.2s;
+}
+
+.btn-arquivo:hover { background-color: rgba(128, 128, 128, 0.1); }
 
 .btn-salvar-perfil {
-  background: var(--cor-primaria);
+  background-color: var(--cor-primaria, #38bdf8);
   color: #111;
-  padding: 0.8rem 1.5rem;
-  border-radius: 8px;
   border: none;
+  padding: 12px;
+  border-radius: 8px;
   font-weight: bold;
   cursor: pointer;
   align-self: flex-end;
-  transition: transform 0.2s;
+  transition: opacity 0.2s;
 }
-.btn-salvar-perfil:hover { transform: translateY(-2px); }
 
-/* =========================================
-   Grade de Temas
-   ========================================= */
+.btn-salvar-perfil:hover { opacity: 0.8; }
+
 .grade-temas {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  display: flex;
   gap: 1.5rem;
+  flex-wrap: wrap;
+  align-items: flex-start; 
 }
 
-.card-tema {
-  background: rgba(0,0,0,0.2);
-  border: 2px solid transparent;
-  border-radius: 12px;
-  padding: 1rem;
-  text-align: center;
-  cursor: pointer;
-  transition: all 0.2s;
+.cartao-tema-padrao, .cartao-tema-custom {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 1rem;
+  gap: 0.8rem;
+  width: 140px;
 }
 
-.card-tema:hover { transform: translateY(-5px); border-color: rgba(255,255,255,0.2); }
-.card-tema.ativo { border-color: var(--cor-primaria); background: rgba(255,255,255,0.05); box-shadow: 0 0 15px rgba(0,0,0,0.3); }
-
-/* Caixinhas que simulam as cores do tema */
-.preview-cores { width: 100%; height: 60px; border-radius: 8px; }
-.preview-cores.padrao { background: linear-gradient(135deg, #222 50%, #38bdf8 50%); border: 1px solid #444; }
-.preview-cores.bocchi { background: linear-gradient(135deg, #1a151b 50%, #FFB6C1 50%); border: 1px solid #332835; }
-
-/* Estilo do Botão Criar Novo */
-.btn-novo-tema { border: 2px dashed #666; justify-content: center; }
-.btn-novo-tema:hover { border-color: var(--cor-primaria); }
-.icone-novo { font-size: 2rem; color: #666; width: 60px; height: 60px; display: flex; align-items: center; justify-content: center; transition: color 0.2s; }
-.btn-novo-tema:hover .icone-novo { color: var(--cor-primaria); }
-
-/* =========================================
-   Modal de Tema e Toast (Reaproveitados)
-   ========================================= */
-.modal-overlay { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.7); backdrop-filter: blur(4px); display: flex; align-items: center; justify-content: center; z-index: 1000; }
-.modal-conteudo { background: var(--cor-fundo); border: 1px solid var(--cor-card); border-radius: 12px; width: 90%; max-width: 500px; padding: 2rem; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
-.modal-cabecalho { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; border-bottom: 1px solid var(--cor-card); padding-bottom: 1rem; }
-.modal-cabecalho h3 { margin: 0; font-size: 1.2rem; }
-.btn-fechar { background: transparent; border: none; color: var(--cor-texto); font-size: 1.5rem; cursor: pointer; }
-.modal-corpo { display: flex; flex-direction: column; gap: 1.5rem; }
-.aviso-construcao { text-align: center; color: #ffd900; font-weight: bold; background: rgba(255, 217, 0, 0.1); padding: 1rem; border-radius: 8px; }
-.inativo { opacity: 0.5; }
-.modal-rodape { display: flex; justify-content: flex-end; gap: 1rem; margin-top: 2rem; }
-.btn-cancelar { background: transparent; border: 1px solid #ff4444; color: #ff4444; padding: 0.6rem 1rem; border-radius: 8px; cursor: pointer; font-weight: bold; }
-.btn-salvar { background: var(--cor-primaria); color: #111; padding: 0.6rem 1rem; border-radius: 8px; cursor: pointer; font-weight: bold; border: none; }
-
-.toast-aviso { position: fixed; bottom: 30px; right: 30px; background-color: var(--cor-primaria); color: #111; padding: 1rem 1.5rem; border-radius: 8px; font-weight: bold; font-size: 1.1rem; box-shadow: 0 8px 20px rgba(0,0,0,0.4); z-index: 2000; }
-.fade-enter-active, .fade-leave-active { transition: opacity 0.3s, transform 0.3s; }
-.fade-enter-from, .fade-leave-to { opacity: 0; transform: translateY(20px); }
-
-
-/* Estilos do Upload de Imagem */
-.input-escondido {
-  display: none;
-}
-
-.btn-upload {
-  display: inline-block;
-  background: rgba(0, 0, 0, 0.3);
-  border: 2px dashed var(--cor-primaria);
-  color: var(--cor-texto);
-  padding: 0.8rem;
-  border-radius: 8px;
+.cartao-tema-padrao p, .cartao-tema-custom p {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 500;
   text-align: center;
-  font-weight: bold;
+}
+
+.preview-tema-padrao, .preview-tema-custom {
+  width: 100%;
+  height: 80px;
+  border-radius: 8px;
+  border: none;
   cursor: pointer;
+  transition: transform 0.2s;
+  background-size: cover;
+  background-position: center;
+  position: relative;
+  overflow: hidden;
+}
+
+.preview-tema-padrao:hover, .preview-tema-custom:hover { transform: scale(1.05); }
+
+.ativo .preview-tema-padrao, .ativo .preview-tema-custom {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--cor-card, #1e293b), 0 0 0 6px var(--cor-primaria, #38bdf8);
+}
+
+.bg-padrao { background: linear-gradient(135deg, #0f172a 50%, #38bdf8 50%); }
+.bg-bocchi { background: linear-gradient(135deg, #1e1e1e 50%, #FFB6C1 50%); }
+
+.btn-criar-novo { cursor: pointer; }
+
+.icone-mais {
+  width: 100%;
+  height: 80px;
+  border-radius: 8px;
+  border: 2px dashed var(--cor-primaria, #38bdf8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2rem;
+  color: var(--cor-primaria, #38bdf8);
+  transition: background-color 0.2s;
+}
+
+.btn-criar-novo:hover .icone-mais { background-color: rgba(128, 128, 128, 0.1); }
+
+.overlay-texto {
+  position: absolute;
+  top: 0; left: 0; width: 100%; height: 100%;
+  background-color: rgba(0,0,0,0.4);
+}
+
+.acoes-tema {
+  display: flex;
+  gap: 0.8rem;
+  justify-content: center;
+  width: 100%;
+}
+
+.btn-icone {
+  background: transparent;
+  color: var(--cor-texto, #f8fafc);
+  border: 1px solid currentColor;
+  padding: 6px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.9rem;
   transition: all 0.2s;
-}
-
-.btn-upload:hover:not(.carregando) {
-  background: rgba(255, 255, 255, 0.05);
-  transform: translateY(-2px);
-}
-
-.btn-upload.carregando {
-  cursor: wait;
-  opacity: 0.7;
-  border-style: solid;
-}
-
-.btn-salvar-perfil:disabled {
+  display: flex;
+  align-items: center;
+  justify-content: center;
   opacity: 0.5;
-  cursor: not-allowed;
-  transform: none;
 }
 
+.btn-icone:hover { 
+  opacity: 1;
+  transform: translateY(-2px); 
+  background: rgba(128, 128, 128, 0.15);
+}
 
+.btn-icone.perigo:hover { 
+  background: rgba(255, 107, 107, 0.1);
+  border-color: #ff6b6b;
+  color: #ff6b6b;
+}
+
+/* =======================================
+   ESTILOS DA MODAL E PREVIEW LIVE
+   ======================================= */
+.modal-overlay {
+  position: fixed;
+  top: 0; left: 0; width: 100vw; height: 100vh;
+  background-color: rgba(0, 0, 0, 0.75);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 9999;
+  backdrop-filter: blur(4px);
+}
+
+.modal-conteudo {
+  background-color: var(--cor-card, #1e293b);
+  color: var(--cor-texto, #f8fafc); 
+  padding: 2rem;
+  border-radius: 16px;
+  width: 90%;
+  max-width: 500px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+  display: flex;
+  flex-direction: column;
+  gap: 1.2rem;
+  border: 1px solid var(--cor-borda-custom, transparent);
+  
+  /* Permite rolar se a tela for muito pequena */
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.modal-conteudo h2 { margin: 0; font-size: 1.5rem; }
+.modal-conteudo p { margin: 0; font-size: 0.9rem; opacity: 0.8; }
+.modal-conteudo hr { border: none; border-top: 1px solid rgba(255, 255, 255, 0.1); margin: 0.5rem 0; }
+
+/* ---- O PREVIEW MÁGICO ---- */
+.preview-live-container {
+  width: 100%;
+  min-height: 220px; /* Trocamos height fixo por min-height para garantir espaço */
+  flex-shrink: 0; /* A MÁGICA AQUI: Impede que o navegador esprema a div */
+  border-radius: 12px;
+  background-size: cover;
+  background-position: center;
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  margin-bottom: 0.5rem;
+}
+.preview-live-modal {
+  width: 80%;
+  padding: 1rem;
+  border-radius: 12px;
+  border: 2px solid;
+  background-size: cover;
+  background-position: center;
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+}
+
+.preview-live-modal h4 {
+  margin: 0;
+  font-size: 1.1rem;
+}
+
+.preview-live-midia {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  background: rgba(0,0,0,0.3);
+  padding: 0.5rem;
+  border-radius: 8px;
+  border-left: 4px solid;
+}
+
+.preview-live-capa {
+  width: 35px;
+  height: 50px;
+  background: #333;
+  border-radius: 4px;
+}
+
+.preview-live-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.preview-live-info span {
+  font-size: 0.85rem;
+  font-weight: bold;
+}
+
+.preview-live-nota {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  font-weight: bold;
+  width: fit-content;
+}
+
+.icone-estrela-custom {
+  width: 1.2em; height: 1.2em; object-fit: contain; vertical-align: text-bottom; margin-left: 2px;
+}
+
+.preview-live-btn {
+  padding: 6px;
+  border: none;
+  border-radius: 6px;
+  font-weight: bold;
+  font-size: 0.8rem;
+}
+/* -------------------------- */
+
+.grupo-input { display: flex; flex-direction: column; gap: 0.5rem; }
+.grupo-input label { font-size: 0.9rem; font-weight: bold; opacity: 0.9; }
+
+.input-texto-modal {
+  background-color: rgba(0, 0, 0, 0.2);
+  color: var(--cor-texto, #f8fafc);
+  padding: 12px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  font-size: 1rem;
+  outline: none;
+}
+.input-texto-modal:focus { border-color: var(--cor-primaria, #38bdf8); }
+.input-texto-modal:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.grupo-input input[type="file"] {
+  background-color: rgba(0, 0, 0, 0.2);
+  color: var(--cor-texto, #f8fafc);
+  padding: 10px;
+  border-radius: 8px;
+  border: 1px dashed rgba(255, 255, 255, 0.3);
+  cursor: pointer;
+}
+
+.cores-container { 
+  display: flex; 
+  flex-direction: row; 
+  gap: 1.5rem; 
+  flex-wrap: wrap; 
+}
+.cores-container input[type="color"] {
+  -webkit-appearance: none;
+  border: none; width: 60px; height: 40px; border-radius: 8px; cursor: pointer; padding: 0; background: none;
+}
+.cores-container input[type="color"]::-webkit-color-swatch-wrapper { padding: 0; }
+.cores-container input[type="color"]::-webkit-color-swatch {
+  border: 2px solid rgba(255, 255, 255, 0.2); border-radius: 8px;
+}
+
+.botoes-modal { display: flex; justify-content: flex-end; gap: 1rem; margin-top: 1rem; }
+.btn-cancelar {
+  background-color: transparent; color: #ff6b6b; border: 1px solid #ff6b6b; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: bold; transition: all 0.2s;
+}
+.btn-cancelar:hover { background-color: rgba(255, 107, 107, 0.1); }
+.btn-salvar {
+  background-color: var(--cor-primaria, #38bdf8); color: #111; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: bold; transition: opacity 0.2s;
+}
+.btn-salvar:hover { opacity: 0.8; }
+
+.toast-mensagem {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  background-color: var(--cor-primaria, #38bdf8);
+  color: #111;
+  padding: 15px 25px;
+  border-radius: 8px;
+  font-weight: bold;
+  box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+  z-index: 10000;
+  animation: slideIn 0.3s ease-out;
+}
+
+@keyframes slideIn {
+  from { transform: translateX(100%); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+
+/* Customiza a barrinha de scroll da modal */
+.modal-conteudo::-webkit-scrollbar {
+  width: 8px;
+}
+.modal-conteudo::-webkit-scrollbar-track {
+  background: rgba(0,0,0,0.2); 
+  border-radius: 8px;
+}
+.modal-conteudo::-webkit-scrollbar-thumb {
+  background: var(--cor-primaria, #888); 
+  border-radius: 8px;
+}
 </style>

@@ -1,49 +1,17 @@
-import { defineStore } from "pinia";
-import { ref } from "vue";
-import { db,doc, getDoc, setDoc } from "../services/firebase";
+import { defineStore } from 'pinia'
+import { doc, getDoc, setDoc } from 'firebase/firestore'
+import { db } from '../services/firebase'
 
 export const usePerfilStore = defineStore('perfil', {
   state: () => ({
-    // O ID de busca (não deve mudar para não perder as mídias salvas)
     perfilAtivo: localStorage.getItem('perfilAtivo') || 'Padrao', 
-    
-    // Dados visuais do perfil
     nomeExibicao: 'Perfil Padrão',
     fotoUrl: '',
-    temaAtual: 'padrao'
+    temaAtual: 'padrao',
+    temasCustomizados: {} 
   }),
 
   actions: {
-    // 1. Troca o usuário ativo e busca as configurações dele no Firebase
-    async trocarPerfil(novoPerfilId) {
-      this.perfilAtivo = novoPerfilId;
-      localStorage.setItem('perfilAtivo', novoPerfilId);
-      
-      await this.carregarConfiguracoesDoFirebase();
-    },
-
-    // 2. Muda apenas o tema visual e salva no Firebase
-    async aplicarTema(novoTema) {
-      this.temaAtual = novoTema;
-      document.documentElement.setAttribute('data-theme', novoTema);
-      
-      // Salva a escolha do tema no banco de dados em segundo plano
-      await this.salvarConfiguracoesNoFirebase();
-    },
-
-    // 3. Salva o novo nome e foto editados na tela de Configurações
-    async atualizarPerfil(novoNome, novaFoto) {
-      this.nomeExibicao = novoNome;
-      if (novaFoto) {
-        this.fotoUrl = novaFoto;
-      }
-      
-      await this.salvarConfiguracoesNoFirebase();
-    },
-
-    // --- FUNÇÕES INTERNAS DE BANCO DE DADOS ---
-
-    // Busca os dados do perfil atual no Firebase
     async carregarConfiguracoesDoFirebase() {
       try {
         const perfilRef = doc(db, "configuracoes_perfis", this.perfilAtivo);
@@ -55,24 +23,47 @@ export const usePerfilStore = defineStore('perfil', {
           this.fotoUrl = dados.fotoUrl || '';
           this.temaAtual = dados.temaAtual || 'padrao';
           
-          // MUDANÇA AQUI: Injeta o tema salvo usando this.temaAtual
+          if (dados.temasCustomizados) {
+            this.temasCustomizados = dados.temasCustomizados;
+          }
+          
           document.documentElement.setAttribute('data-theme', this.temaAtual);
+          this.aplicarEstilosCustomizados();
+
         } else {
-          // Se for a primeira vez que usa este perfil, cria um documento padrão
           this.nomeExibicao = this.perfilAtivo;
           this.fotoUrl = '';
           this.temaAtual = 'padrao';
+          this.temasCustomizados = {};
           
-          // MUDANÇA AQUI: Injeta o tema padrão usando a string 'padrao'
           document.documentElement.setAttribute('data-theme', 'padrao');
-          await this.salvarConfiguracoesNoFirebase();
+          this.aplicarEstilosCustomizados();
         }
       } catch (erro) {
         console.error("Erro ao carregar configurações do perfil:", erro);
       }
     },
 
-    // Envia o estado atual para o Firebase
+    async atualizarPerfil(novoNome, novaFoto) {
+      this.nomeExibicao = novoNome;
+      if (novaFoto) {
+        this.fotoUrl = novaFoto;
+      }
+      await this.salvarConfiguracoesNoFirebase();
+    },
+
+    async atualizarTema(novoTemaId, novoTemaConfig = null) {
+      if (novoTemaConfig) {
+        this.temasCustomizados[novoTemaId] = novoTemaConfig;
+      }
+      
+      this.temaAtual = novoTemaId;
+      document.documentElement.setAttribute('data-theme', this.temaAtual);
+      this.aplicarEstilosCustomizados();
+
+      await this.salvarConfiguracoesNoFirebase();
+    },
+
     async salvarConfiguracoesNoFirebase() {
       try {
         const perfilRef = doc(db, "configuracoes_perfis", this.perfilAtivo);
@@ -80,10 +71,46 @@ export const usePerfilStore = defineStore('perfil', {
           nomeExibicao: this.nomeExibicao,
           fotoUrl: this.fotoUrl,
           temaAtual: this.temaAtual,
-          ultimaAtualizacao: new Date()
-        }, { merge: true }); // O merge evita apagar outros campos que possam existir
+          temasCustomizados: this.temasCustomizados
+        }, { merge: true });
       } catch (erro) {
-        console.error("Erro ao salvar configurações do perfil:", erro);
+        console.error("Erro ao salvar perfil no Firebase:", erro);
+        throw erro;
+      }
+    },
+
+    async trocarPerfil(novoPerfilId) {
+      this.perfilAtivo = novoPerfilId;
+      localStorage.setItem('perfilAtivo', novoPerfilId);
+      await this.carregarConfiguracoesDoFirebase();
+    },
+
+    aplicarEstilosCustomizados() {
+      const root = document.documentElement;
+      const configDoTema = this.temasCustomizados[this.temaAtual];
+
+      if (configDoTema) {
+        root.style.setProperty('--bg-app-custom', configDoTema.fundoApp ? `url(${configDoTema.fundoApp})` : 'none');
+        root.style.setProperty('--bg-modal-custom', configDoTema.fundoModal ? `url(${configDoTema.fundoModal})` : 'none');
+        root.style.setProperty('--icone-estrela-custom', configDoTema.iconeEstrela ? `url(${configDoTema.iconeEstrela})` : 'none');
+        
+        root.style.setProperty('--cor-fundo-fallback', configDoTema.corFundoFallback || '#0f172a');
+        root.style.setProperty('--cor-borda-custom', configDoTema.corBorda || '#1e293b');
+        
+        // Novas injeções de cor de destaque e texto
+        root.style.setProperty('--cor-primaria', configDoTema.corPrimaria || '#38bdf8');
+        root.style.setProperty('--cor-texto', configDoTema.corTexto || '#f8fafc');
+      } else {
+        root.style.setProperty('--bg-app-custom', 'none');
+        root.style.setProperty('--bg-modal-custom', 'none');
+        root.style.setProperty('--icone-estrela-custom', 'none');
+        
+        root.style.removeProperty('--cor-fundo-fallback');
+        root.style.removeProperty('--cor-borda-custom');
+        
+        // Remove as injeções para deixar o CSS padrão (Padrao/Bocchi) assumir o controle
+        root.style.removeProperty('--cor-primaria');
+        root.style.removeProperty('--cor-texto');
       }
     }
   }

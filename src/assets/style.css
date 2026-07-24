@@ -15,13 +15,14 @@
     --cor-card: #ffffff;
 }
 
-body{
-    background-color: var(--cor-fundo);
-    color: var(--cor-texto);
-    transition: background-color 0.4s ease, color 0.4 ease;
-    font-family: sans-serif;
-    margin: 0;
-    padding: 20px;
+body {
+  /* Se tiver imagem, usa. Se não tiver, usa a cor de fundo */
+  background-image: var(--bg-app-custom);
+  background-color: var(--cor-fundo-fallback, var(--cor-fundo));
+  background-size: cover;
+  background-position: center;
+  background-attachment: fixed;
+  border-color: var(--cor-borda-custom, transparent);
 }
 
 button {
@@ -38,4 +39,40 @@ button {
 
 button:hover {
     opacity: 0.8;
+}
+
+.modal-conteudo {
+  background-image: var(--bg-modal-custom);
+  background-color: var(--cor-card);
+  background-size: cover;
+  border: 2px solid var(--cor-borda-custom, transparent);
+}
+
+h1, h2, h3, h4, p, span, label {
+  color: var(--cor-texto, #f8fafc);
+}
+
+/* --- ESTILIZAÇÃO DE INPUTS, SELECTS E TEXTAREAS --- */
+input, select, textarea {
+  /* Um fundo neutro semi-transparente que fica bem no claro e no escuro */
+  background-color: rgba(128, 128, 128, 0.1); 
+  /* Força a cor do texto para a cor do tema (substituindo aquele vermelho perdido) */
+  color: var(--cor-texto, #f8fafc) !important; 
+  border: 1px solid var(--cor-borda-custom, rgba(255, 255, 255, 0.2));
+  padding: 10px;
+  border-radius: 8px;
+  font-family: inherit;
+}
+
+/* Efeito ao clicar no input */
+input:focus, select:focus, textarea:focus {
+  border-color: var(--cor-primaria, #38bdf8);
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(128, 128, 128, 0.1);
+}
+
+/* Garante que o texto de placeholder não fique muito forte */
+input::placeholder, textarea::placeholder {
+  color: var(--cor-texto, #f8fafc);
+  opacity: 0.5;
 }

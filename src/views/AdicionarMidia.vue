@@ -194,7 +194,6 @@ async function salvarMidia() {
 
           <div class="grupo-campo">
             <label>Avaliação (0 a 5):</label>
-            <!-- A classe tema-bocchi foi removida daqui por enquanto -->
             <div class="seletor-nota">
               <button 
                 v-for="n in 6" 
@@ -203,7 +202,18 @@ async function salvarMidia() {
                 :class="{ ativo: formulario.nota === (n - 1) }"
                 @click="formulario.nota = (n - 1)"
               >
-                {{ n - 1 }} <span class="icone-nota">★</span>
+                {{ n - 1 }} 
+                <!-- Verifica se o tema atual tem ícone customizado -->
+                <template v-if="perfilStore.temasCustomizados[perfilStore.temaAtual]?.iconeEstrela">
+                  <img 
+                    :src="perfilStore.temasCustomizados[perfilStore.temaAtual].iconeEstrela" 
+                    class="icone-estrela-custom" 
+                    alt="Estrela" 
+                  />
+                </template>
+                <template v-else>
+                  <span class="icone-nota">★</span>
+                </template>
               </button>
             </div>
           </div>
@@ -230,7 +240,7 @@ async function salvarMidia() {
 
 <style scoped>
 /* Layout Base */
-.adicionar-container { padding: 2rem; max-width: 1000px; margin: 0 auto; }
+.adicionar-container { padding: 2rem; max-width: 1000px; margin: 0 auto; color: var(--cor-texto); }
 header { display: flex; align-items: center; gap: 2rem; margin-bottom: 2rem; }
 .btn-voltar { background: transparent; border: 1px solid var(--cor-primaria); color: var(--cor-texto); padding: 0.5rem 1rem; border-radius: 6px; cursor: pointer; }
 
@@ -315,6 +325,7 @@ header { display: flex; align-items: center; gap: 2rem; margin-bottom: 2rem; }
   line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
+  color: var(--cor-texto);
 }
 
 /* Badge (Etiquetas Coloridas) */
@@ -353,6 +364,9 @@ header { display: flex; align-items: center; gap: 2rem; margin-bottom: 2rem; }
   max-width: 300px;
   text-align: center;
 }
+.info-midia h3 {
+  color: var(--cor-texto);
+}
 .capa-preview {
   width: 100%;
   border-radius: 12px;
@@ -366,7 +380,7 @@ header { display: flex; align-items: center; gap: 2rem; margin-bottom: 2rem; }
 }
 
 /* Campos Internos */
-.grupo-campo { display: flex; flex-direction: column; gap: 0.5rem; font-weight: bold; }
+.grupo-campo { display: flex; flex-direction: column; gap: 0.5rem; font-weight: bold; color: var(--cor-texto); }
 .botoes-status { display: flex; gap: 0.5rem; flex-wrap: wrap; }
 .botoes-status button { background: transparent; border: 1px solid var(--cor-primaria); color: var(--cor-texto); padding: 0.5rem 1rem; border-radius: 6px; cursor: pointer; }
 .botoes-status button:disabled { background: var(--cor-primaria); color: #111; cursor: not-allowed; opacity: 1; }
@@ -444,6 +458,16 @@ input[type="number"], textarea {
   font-size: 1.2rem;
   color: #666;
   transition: color 0.3s;
+}
+
+/* Ícone de estrela customizado vindo da Store */
+.icone-estrela-custom {
+  width: 1.2em;
+  height: 1.2em;
+  vertical-align: text-bottom;
+  object-fit: contain;
+  display: inline-block;
+  margin-left: 2px;
 }
 
 .seletor-nota button:hover {

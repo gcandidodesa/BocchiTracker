@@ -294,7 +294,18 @@ async function confirmarExclusao() {
             <div class="info-hover">
               <p class="titulo">{{ midia.titulo }}</p>
               <div class="badge-nota" v-if="midia.nota !== null">
-                {{ midia.nota }} ★
+                {{ midia.nota }} 
+                <!-- Verifica o icone no badge de nota da home -->
+                <template v-if="perfilStore.temasCustomizados[perfilStore.temaAtual]?.iconeEstrela">
+                  <img 
+                    :src="perfilStore.temasCustomizados[perfilStore.temaAtual].iconeEstrela" 
+                    class="icone-estrela-custom" 
+                    alt="Estrela" 
+                  />
+                </template>
+                <template v-else>
+                  <span>★</span>
+                </template>
               </div>
             </div>
           </div>
@@ -334,7 +345,18 @@ async function confirmarExclusao() {
                   :class="{ ativo: formularioEdicao.nota === (n - 1) }"
                   @click="formularioEdicao.nota = (n - 1)"
                 >
-                  {{ n - 1 }} <span class="icone-nota">★</span>
+                  {{ n - 1 }} 
+                  <!-- Verifica o icone no modal de edição da home -->
+                  <template v-if="perfilStore.temasCustomizados[perfilStore.temaAtual]?.iconeEstrela">
+                    <img 
+                      :src="perfilStore.temasCustomizados[perfilStore.temaAtual].iconeEstrela" 
+                      class="icone-estrela-custom" 
+                      alt="Estrela" 
+                    />
+                  </template>
+                  <template v-else>
+                    <span class="icone-nota">★</span>
+                  </template>
                 </button>
               </div>
             </div>
@@ -386,7 +408,7 @@ async function confirmarExclusao() {
 
 <style scoped>
 /* Base */
-.dashboard-container { padding: 2rem; max-width: 1200px; margin: 0 auto; }
+.dashboard-container { padding: 2rem; max-width: 1200px; margin: 0 auto; color: var(--cor-texto); }
 .cabecalho { display: flex; flex-direction: column; gap: 1.5rem; margin-bottom: 3rem; }
 
 .topo-cabecalho {
@@ -416,7 +438,7 @@ async function confirmarExclusao() {
   box-shadow: 0 4px 12px var(--cor-primaria);
 }
 
-.estado-vazio { text-align: center; padding: 5rem 0; font-size: 1.2rem; color: #888; }
+.estado-vazio { text-align: center; padding: 5rem 0; font-size: 1.2rem; color: var(--cor-texto); opacity: 0.7; }
 
 /* Abas */
 .abas-status {
@@ -445,7 +467,7 @@ async function confirmarExclusao() {
 
 /* Prateleiras */
 .categoria-secao { margin-bottom: 3rem; }
-.titulo-categoria { font-size: 1.4rem; border-bottom: 2px solid var(--cor-card); padding-bottom: 0.5rem; margin-bottom: 1.5rem; display: flex; align-items: center; gap: 1rem; }
+.titulo-categoria { font-size: 1.4rem; color: var(--cor-texto); border-bottom: 2px solid var(--cor-card); padding-bottom: 0.5rem; margin-bottom: 1.5rem; display: flex; align-items: center; gap: 1rem; }
 .contador { background: var(--cor-card); color: var(--cor-texto); font-size: 0.9rem; padding: 0.2rem 0.6rem; border-radius: 20px; }
 
 /* Carrossel e Cartões */
@@ -479,18 +501,20 @@ async function confirmarExclusao() {
 .info-hover { position: absolute; inset: 0; background: linear-gradient(to top, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0.4) 50%, rgba(0,0,0,0.1) 100%); display: flex; flex-direction: column; justify-content: flex-end; padding: 1rem; opacity: 0; transition: opacity 0.3s; }
 .cartao-midia:hover .info-hover { opacity: 1; }
 .cartao-midia:hover img { filter: brightness(0.6); }
-.info-hover .titulo { margin: 0 0 0.5rem 0; font-weight: bold; font-size: 0.95rem; text-shadow: 1px 1px 3px black; display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-.badge-nota { align-self: flex-start; background: #ffd900; color: #111; font-weight: 900; padding: 0.2rem 0.5rem; border-radius: 6px; font-size: 0.85rem; }
+.info-hover .titulo { margin: 0 0 0.5rem 0; font-weight: bold; font-size: 0.95rem; text-shadow: 1px 1px 3px black; display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; color: #fff;} /* A cor do titulo no card mantemos branco pelo fundo escuro do degradê */
+.badge-nota { align-self: flex-start; background: #ffd900; color: #111; font-weight: 900; padding: 0.2rem 0.5rem; border-radius: 6px; font-size: 0.85rem; display: flex; align-items: center; gap: 2px;}
 
 /* Modais */
 .modal-overlay { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.7); backdrop-filter: blur(4px); display: flex; align-items: center; justify-content: center; z-index: 1000; }
-.modal-conteudo { background: var(--cor-fundo); border: 1px solid var(--cor-card); border-radius: 12px; width: 90%; max-width: 500px; padding: 2rem; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
-.modal-cabecalho { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; border-bottom: 1px solid var(--cor-card); padding-bottom: 1rem; }
-.modal-cabecalho h3 { margin: 0; font-size: 1.2rem; }
-.btn-fechar { background: transparent; border: none; color: var(--cor-texto); font-size: 1.5rem; cursor: pointer; }
+.modal-conteudo { background: var(--cor-card); background-image: var(--bg-modal-custom); background-size: cover; color: var(--cor-texto); border: 1px solid var(--cor-borda-custom, transparent); border-radius: 12px; width: 90%; max-width: 500px; padding: 2rem; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+.modal-cabecalho { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; border-bottom: 1px solid rgba(255, 255, 255, 0.1); padding-bottom: 1rem; }
+.modal-cabecalho h3 { margin: 0; font-size: 1.2rem; color: var(--cor-texto); }
+.btn-fechar { background: transparent; border: none; color: #ff4444; font-size: 1.5rem; cursor: pointer; }
 .modal-corpo { display: flex; flex-direction: column; gap: 1.5rem; }
 .grupo-campo { display: flex; flex-direction: column; gap: 0.5rem; font-weight: bold; }
-.select-estilizado, textarea { padding: 0.8rem; border-radius: 8px; border: 1px solid var(--cor-card); background: rgba(0,0,0,0.2); color: var(--cor-texto); font-family: inherit; width: 100%; box-sizing: border-box; }
+.select-estilizado, textarea { padding: 0.8rem; border-radius: 8px; border: 1px solid rgba(255, 255, 255, 0.1); background: rgba(0,0,0,0.2); color: var(--cor-texto); font-family: inherit; width: 100%; box-sizing: border-box; }
+.select-estilizado:focus, textarea:focus { border-color: var(--cor-primaria); outline: none; }
+.select-estilizado option { background: var(--cor-card); color: var(--cor-texto); }
 .modal-rodape { display: flex; justify-content: space-between; align-items: center; margin-top: 2rem; }
 .acoes-direita { display: flex; gap: 1rem; }
 .btn-excluir { background: #ff4444; color: white; padding: 0.6rem 1rem; border-radius: 8px; cursor: pointer; font-weight: bold; border: none; transition: background 0.2s; }
@@ -502,6 +526,8 @@ async function confirmarExclusao() {
 .seletor-nota { display: flex; gap: 0.5rem; flex-wrap: wrap; }
 .seletor-nota button { min-width: 45px; height: 38px; border-radius: 8px; border: 2px solid var(--cor-primaria); background: rgba(0, 0, 0, 0.3); color: var(--cor-texto); font-weight: bold; font-size: 1rem; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; justify-content: center; gap: 4px; }
 .icone-nota { font-size: 1rem; color: #666; transition: color 0.3s; }
+.icone-estrela-custom { width: 1.2em; height: 1.2em; object-fit: contain; vertical-align: text-bottom; margin-left: 2px; }
+
 .seletor-nota button:hover { background: rgba(255, 255, 255, 0.1); transform: translateY(-2px); }
 .seletor-nota button.ativo { background: var(--cor-primaria); color: #111; border-color: var(--cor-primaria); transform: scale(1.1) translateY(-2px); box-shadow: 0 5px 15px var(--cor-primaria); }
 .seletor-nota button.ativo .icone-nota { color: #ffd900; }
@@ -511,7 +537,7 @@ async function confirmarExclusao() {
 .modal-pequeno { max-width: 400px; padding: 2rem 1.5rem; }
 .texto-centro { text-align: center; gap: 1rem; }
 .titulo-perigo { color: #ff4444; font-size: 1.5rem; margin: 0 0 1rem 0; }
-.texto-dica { font-size: 0.9rem; color: #888; margin-top: 0.5rem; }
+.texto-dica { font-size: 0.9rem; color: var(--cor-texto); opacity: 0.7; margin-top: 0.5rem; }
 .modal-rodape.centralizado { justify-content: center; margin-top: 1.5rem; gap: 1rem; }
 
 /* Toast */
@@ -520,42 +546,21 @@ async function confirmarExclusao() {
 .fade-enter-from, .fade-leave-to { opacity: 0; transform: translateY(20px); }
 
 /* Container dos botões no topo */
-.acoes-topo {
-  display: flex;
-  align-items: center;
-  gap: 1.5rem;
-}
+.acoes-topo { display: flex; align-items: center; gap: 1.5rem; }
+
 /* =========================================
    Menu Suspenso do Perfil (Avatar)
    ========================================= */
-.perfil-container {
-  position: relative;
-  display: flex;
-  align-items: center;
-  z-index: 1000; /* Garante que o menu fique acima dos cartões */
-}
-
-.avatar-perfil {
-  width: 45px;
-  height: 45px;
-  border-radius: 50%;
-  object-fit: cover;
-  cursor: pointer;
-  border: 2px solid var(--cor-primaria);
-  transition: transform 0.2s, box-shadow 0.2s;
-}
-
-.avatar-perfil:hover {
-  transform: scale(1.05);
-  box-shadow: 0 0 10px var(--cor-primaria);
-}
+.perfil-container { position: relative; display: flex; align-items: center; z-index: 1000; }
+.avatar-perfil { width: 45px; height: 45px; border-radius: 50%; object-fit: cover; cursor: pointer; border: 2px solid var(--cor-primaria); transition: transform 0.2s, box-shadow 0.2s; }
+.avatar-perfil:hover { transform: scale(1.05); box-shadow: 0 0 10px var(--cor-primaria); }
 
 .menu-suspenso {
   position: absolute;
   top: 60px;
   right: 0;
   background: var(--cor-card);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid var(--cor-borda-custom, rgba(255, 255, 255, 0.1));
   border-radius: 12px;
   width: 200px;
   display: flex;
@@ -564,38 +569,10 @@ async function confirmarExclusao() {
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
 }
 
-.menu-cabecalho {
-  padding: 1rem;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-  font-weight: bold;
-  text-align: center;
-  color: var(--cor-primaria);
-}
-
-.item-menu {
-  background: transparent;
-  color: var(--cor-texto);
-  border: none;
-  padding: 1rem;
-  text-align: left;
-  font-size: 0.95rem;
-  cursor: pointer;
-  transition: background 0.2s;
-  display: flex;
-  gap: 0.8rem;
-  align-items: center;
-}
-
-.item-menu:hover {
-  background: rgba(255, 255, 255, 0.05);
-}
+.menu-cabecalho { padding: 1rem; border-bottom: 1px solid rgba(255, 255, 255, 0.05); font-weight: bold; text-align: center; color: var(--cor-primaria); }
+.item-menu { background: transparent; color: var(--cor-texto); border: none; padding: 1rem; text-align: left; font-size: 0.95rem; cursor: pointer; transition: background 0.2s; display: flex; gap: 0.8rem; align-items: center; }
+.item-menu:hover { background: rgba(255, 255, 255, 0.05); }
 
 /* Fundo invisível para capturar o clique fora do menu */
-.overlay-invisivel {
-  position: fixed;
-  inset: 0;
-  z-index: 999; /* Fica logo abaixo do z-index do .perfil-container */
-}
-
-
+.overlay-invisivel { position: fixed; inset: 0; z-index: 999; }
 </style>

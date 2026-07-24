@@ -11,21 +11,36 @@ const perfisCarregados = ref([])
 const carregando = ref(true)
 
 onMounted(async () => {
+  // --- BLOQUEIO DE TEMA ---
+  // Força o tema para "padrao" no HTML para limpar o fundo claro da Bocchi
+  document.documentElement.setAttribute('data-theme', 'padrao');
+  
+  // Limpa todas as injeções de JavaScript dos temas customizados
+  const root = document.documentElement;
+  root.style.removeProperty('--bg-app-custom');
+  root.style.removeProperty('--bg-modal-custom');
+  root.style.removeProperty('--icone-estrela-custom');
+  root.style.removeProperty('--cor-fundo-fallback');
+  root.style.removeProperty('--cor-borda-custom');
+  root.style.removeProperty('--cor-primaria');
+  root.style.removeProperty('--cor-texto');
+  // -----------------------
+
   try {
-    // Busca todos os perfis salvos no Firebase
+    // Busca todos os perfis salvos no Firebase[cite: 9]
     const querySnapshot = await getDocs(collection(db, "configuracoes_perfis"));
     let perfisTemp = [];
 
     querySnapshot.forEach((doc) => {
       const dados = doc.data();
       perfisTemp.push({
-        id: doc.id, // O ID real ('Padrao', 'Bocchi', etc)
-        nomeExibicao: dados.nomeExibicao || doc.id, // O nome customizado
+        id: doc.id, // O ID real ('Padrao', 'Bocchi', etc)[cite: 9]
+        nomeExibicao: dados.nomeExibicao || doc.id, // O nome customizado[cite: 9]
         fotoUrl: dados.fotoUrl || `https://ui-avatars.com/api/?name=${dados.nomeExibicao || doc.id}&background=333&color=fff`
       });
     });
 
-    // Se o banco estiver vazio (primeiro acesso no app), injeta os padrões para não ficar com a tela em branco
+    // Se o banco estiver vazio (primeiro acesso no app), injeta os padrões para não ficar com a tela em branco[cite: 9]
     if (perfisTemp.length === 0) {
       perfisTemp = [
         { id: 'Padrao', nomeExibicao: 'Perfil Padrão', fotoUrl: `https://ui-avatars.com/api/?name=Padrao&background=333&color=fff` },
@@ -41,12 +56,12 @@ onMounted(async () => {
   }
 })
 
-// Função acionada ao clicar em um perfil
+// Função acionada ao clicar em um perfil[cite: 9]
 async function entrarNoPerfil(perfilId) {
-  // O Pinia faz o trabalho pesado de buscar os dados completos e injetar o tema
+  // O Pinia faz o trabalho pesado de buscar os dados completos e injetar o tema[cite: 9]
   await perfilStore.trocarPerfil(perfilId); 
   
-  // Vai para a tela principal
+  // Vai para a tela principal[cite: 9]
   router.push('/dashboard');
 }
 </script>
@@ -58,7 +73,7 @@ async function entrarNoPerfil(perfilId) {
     </div>
 
     <div v-else class="conteudo-selecao">
-      <h1>Quem está assistindo?</h1>
+      <h1 class="titulo-principal">Quem está assistindo?</h1>
       
       <div class="grade-perfis">
         <div 
@@ -76,14 +91,18 @@ async function entrarNoPerfil(perfilId) {
 </template>
 
 <style scoped>
+/* Garante que a fonte limpa seja usada na tela inicial inteira */
 .selecao-container {
   display: flex;
   align-items: center;
   justify-content: center;
   min-height: 100vh;
-  background-color: #111; /* Fundo escuro fixo para a tela de perfis */
+  /* Fundo escuro fixo para a tela de perfis, ignorando o background do body */
+  background-color: #111 !important; 
+  background-image: none !important;
   color: #fff;
   text-align: center;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
 }
 
 .carregando-tela {
@@ -91,10 +110,12 @@ async function entrarNoPerfil(perfilId) {
   color: #888;
 }
 
-h1 {
+/* Força o título a ser branco, ignorando o vermelho do tema customizado */
+.titulo-principal {
   font-size: 3rem;
   margin-bottom: 3rem;
-  font-weight: normal;
+  font-weight: 500;
+  color: #ffffff !important;
 }
 
 .grade-perfis {
@@ -120,25 +141,28 @@ h1 {
 .avatar-perfil {
   width: 150px;
   height: 150px;
-  border-radius: 12px; /* Pode mudar para 50% se quiser redondo aqui também */
+  border-radius: 12px;
   object-fit: cover;
   border: 4px solid transparent;
   transition: border-color 0.2s;
 }
 
 .cartao-perfil:hover .avatar-perfil {
-  border-color: var(--cor-primaria, #fff); /* Borda brilha ao passar o mouse */
+  /* No hover, usa um branco limpo ao invés da cor primária do tema */
+  border-color: #ffffff;
 }
 
+/* Força os nomes embaixo das fotos a serem cinza claro/branco */
 .nome-perfil {
   margin-top: 1rem;
   font-size: 1.2rem;
-  color: #888;
+  color: #888 !important;
+  font-family: inherit;
   transition: color 0.2s;
 }
 
 .cartao-perfil:hover .nome-perfil {
-  color: #fff;
+  color: #fff !important;
   font-weight: bold;
 }
 </style>
