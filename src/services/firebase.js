@@ -1,6 +1,6 @@
 // src/services/firebase.js
 import { initializeApp } from "firebase/app";
-import { getFirestore, collection, addDoc, getDocs, doc, deleteDoc, updateDoc } from "firebase/firestore";
+import { getFirestore, collection, addDoc, getDocs, doc, deleteDoc, updateDoc, getDoc, setDoc } from "firebase/firestore";
 
 // O import.meta.env puxa as variáveis do seu arquivo .env com segurança
 const firebaseConfig = {
@@ -17,4 +17,4 @@ const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
 // Exporta o banco de dados e as funções que vamos usar nos componentes
-export { db, collection, addDoc, getDocs, doc, deleteDoc, updateDoc };
+export { db, collection, addDoc, getDocs, doc, deleteDoc, updateDoc, getDoc, setDoc };

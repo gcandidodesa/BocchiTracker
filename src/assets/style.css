@@ -4,7 +4,7 @@
     --cor-primaria: #38bdf8;
     --cor-card: #1e293b;
 }
-
+[data-theme = "Bocchi"]
 [data-theme="bocchi"] {
     --cor-fundo: #FFFACD; 
     --cor-texto: #333333;

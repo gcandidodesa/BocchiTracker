@@ -27,6 +27,27 @@ const formularioEdicao = ref({
   resenha: ''
 })
 
+const menuPerfilAberto = ref(false)
+const fotoPerfil = computed(() => {
+  if (perfilStore.fotoUrl) {
+    return perfilStore.fotoUrl;
+  }
+  // Foto padrão
+  return `https://ui-avatars.com/api/?name=${perfilStore.nomeExibicao}&background=333&color=fff`;
+})
+
+
+function irParaConfiguracoes() {
+  menuPerfilAberto.value = false;
+  router.push('/configuracoes')
+}
+
+function trocarPerfil() {
+  menuPerfilAberto.value = false;
+  router.push('/');
+}
+
+
 async function buscarMidiasDoPerfil() {
   carregando.value = true;
   minhasMidias.value = []
@@ -182,10 +203,39 @@ async function confirmarExclusao() {
     <header class="cabecalho">
       <div class="topo-cabecalho">
         <h2>Minha Coleção</h2>
-        <!-- BOTÃO PARA ADICIONAR MÍDIA -->
-        <button class="btn-adicionar" @click="router.push('/adicionar')">
-          ＋ Adicionar Mídia
-        </button>
+        
+        <!-- Grupo de Ações do Topo -->
+        <div class="acoes-topo">
+          <!-- BOTÃO PARA ADICIONAR MÍDIA -->
+          <button class="btn-adicionar" @click="router.push('/adicionar')">
+            ＋ Adicionar Mídia
+          </button>
+          <div class="perfil-container">
+            <img 
+              :src="fotoPerfil" 
+              alt="Avatar do Perfil" 
+              class="avatar-perfil"
+              @click="menuPerfilAberto = !menuPerfilAberto"
+            />
+            <!-- Menu Suspenso -->
+            <Transition name="fade">
+              <div v-if="menuPerfilAberto" class="menu-suspenso">
+                <div class="menu-cabecalho">
+                  <span class="nome-perfil">{{ perfilStore.nomeExibicao}}</span>
+                </div>
+                <button class="item-menu" @click="irParaConfiguracoes">
+                  ⚙️ Configurações
+                </button>
+                <button class="item-menu" @click="trocarPerfil">
+                  🔄 Trocar Perfil
+                </button>
+              </div>
+            </Transition>
+          </div>
+        </div>
+        <!-- Fundo invisível para fechar o menu ao clicar fora -->
+        <div v-if="menuPerfilAberto" class="overlay-invisivel" @click="menuPerfilAberto = false"></div>
+
       </div>
       
       <!-- ABA VISÃO GERAL + ABAS DE STATUS -->
@@ -468,4 +518,84 @@ async function confirmarExclusao() {
 .toast-aviso { position: fixed; bottom: 30px; right: 30px; background-color: var(--cor-primaria); color: #111; padding: 1rem 1.5rem; border-radius: 8px; font-weight: bold; font-size: 1.1rem; box-shadow: 0 8px 20px rgba(0,0,0,0.4); z-index: 2000; }
 .fade-enter-active, .fade-leave-active { transition: opacity 0.3s, transform 0.3s; }
 .fade-enter-from, .fade-leave-to { opacity: 0; transform: translateY(20px); }
+
+/* Container dos botões no topo */
+.acoes-topo {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+}
+/* =========================================
+   Menu Suspenso do Perfil (Avatar)
+   ========================================= */
+.perfil-container {
+  position: relative;
+  display: flex;
+  align-items: center;
+  z-index: 1000; /* Garante que o menu fique acima dos cartões */
+}
+
+.avatar-perfil {
+  width: 45px;
+  height: 45px;
+  border-radius: 50%;
+  object-fit: cover;
+  cursor: pointer;
+  border: 2px solid var(--cor-primaria);
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.avatar-perfil:hover {
+  transform: scale(1.05);
+  box-shadow: 0 0 10px var(--cor-primaria);
+}
+
+.menu-suspenso {
+  position: absolute;
+  top: 60px;
+  right: 0;
+  background: var(--cor-card);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  width: 200px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+}
+
+.menu-cabecalho {
+  padding: 1rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  font-weight: bold;
+  text-align: center;
+  color: var(--cor-primaria);
+}
+
+.item-menu {
+  background: transparent;
+  color: var(--cor-texto);
+  border: none;
+  padding: 1rem;
+  text-align: left;
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: background 0.2s;
+  display: flex;
+  gap: 0.8rem;
+  align-items: center;
+}
+
+.item-menu:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+/* Fundo invisível para capturar o clique fora do menu */
+.overlay-invisivel {
+  position: fixed;
+  inset: 0;
+  z-index: 999; /* Fica logo abaixo do z-index do .perfil-container */
+}
+
+
 </style>

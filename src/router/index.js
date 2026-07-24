@@ -3,6 +3,7 @@ import SelecionarPerfil from "../views/SelecionarPerfil.vue";
 import Dashboard from "../views/Dashboard.vue";
 import { usePerfilStore } from "../stores/perfilStore";
 import AdicionarMidia from "../views/AdicionarMidia.vue";
+import Configuracoes from "../views/Configuracoes.vue";
 
 const router = createRouter({
     history: createWebHistory(),
@@ -10,6 +11,7 @@ const router = createRouter({
         {path: '/', component: SelecionarPerfil},
         {path: '/dashboard', component:Dashboard},
         {path: '/adicionar', component: AdicionarMidia},
+        {path: '/configuracoes', name: 'Configuracoes', component: Configuracoes},
     ]
 })
 
