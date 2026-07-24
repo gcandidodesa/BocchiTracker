@@ -31,42 +31,68 @@ watch (() => perfilStore.temaAtual, (novoTema) => {temaSelecionado.value - novoT
 // --- FUNÇÕES ---
 
 async function fazerUploadImagem(event) {
-    const arquivo = event.target.files[0];
-    if(!arquivo) return;
+  console.log("1. Botão de upload clicado!");
 
-    if (arquivo.size > 5 * 1024 * 1024){
-        mensagemToast.value = "A imagem deve ter no máximo 5MB.";
-        setTimeout(() =>{mensagemToast.value = ''}, 3000);
-        return;
+  const arquivo = event.target.files[0];
+  if (!arquivo) {
+    console.log("Nenhum arquivo selecionado.");
+    return;
+  }
+
+  console.log("2. Arquivo selecionado:", arquivo.name, "| Tamanho:", arquivo.size);
+
+  if (arquivo.size > 5 * 1024 * 1024) {
+    console.warn("Arquivo muito grande!");
+    mensagemToast.value = "A imagem deve ter no máximo 5MB!";
+    event.target.value = ''; // Limpa o input
+    setTimeout(() => { mensagemToast.value = '' }, 3000);
+    return;
+  }
+
+  // Verificação de segurança das credenciais
+  if (CLOUD_NAME === 'SEU_CLOUD_NAME_AQUI' || UPLOAD_PRESET === 'SEU_UPLOAD_PRESET_AQUI') {
+    console.error("ERRO: As chaves do Cloudinary não foram configuradas no código!");
+    mensagemToast.value = "Configure as chaves do Cloudinary!";
+    setTimeout(() => { mensagemToast.value = '' }, 3000);
+    return;
+  }
+
+  fazendoUpload.value = true;
+  const formData = new FormData();
+  formData.append('file', arquivo);
+  formData.append('upload_preset', UPLOAD_PRESET);
+
+  try {
+    console.log("3. Enviando para o Cloudinary...");
+    const resposta = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`, {
+      method: 'POST',
+      body: formData
+    });
+
+    const dados = await resposta.json();
+    console.log("4. Resposta do Cloudinary recebida:", dados);
+
+    if (dados.secure_url) {
+      fotoEditada.value = dados.secure_url; 
+      
+      console.log("5. Salvando no Firebase...");
+      await perfilStore.atualizarPerfil(nomeEditado.value, fotoEditada.value);
+      
+      mensagemToast.value = "Foto atualizada e salva no perfil!";
+    } else {
+      throw new Error("Falha ao gerar link: " + (dados.error?.message || "Erro desconhecido"));
     }
-
-    fazendoUpload.value = true;
-
-    const formData = new FormData();
-    formData.append('file', arquivo);
-    formData.append('upload_preset', UPLOAD_PRESET);
-
-    try {
-        const resposta = await fetch (`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`, {
-            method: 'POST',
-            body: formData
-        });
-
-        const dados = await resposta.json();
-
-        if (dados.secure_url) {
-            fotoEditada.value = dados.secure_url;
-            mensagemToast.value = "Upload Concluído."
-        } else {
-            throw new Error ("Falha ao gerar link");
-        }
-    } catch (erro) {
-        console.error ("Erro no upload:", erro);
-        mensagemToast.value = "Erro ao enviar a imagem.";
-    } finally {
-        fazendoUpload.value = false;
-        setTimeout (() => {mensagemToast.value = ''}, 3000);
-    }
+  } catch (erro) {
+    console.error("Erro no upload:", erro);
+    mensagemToast.value = "Erro ao enviar a imagem.";
+  } finally {
+    fazendoUpload.value = false;
+    
+    // MUDANÇA CRUCIAL: Limpa a memória do input para permitir o upload da mesma foto de novo
+    event.target.value = ''; 
+    
+    setTimeout(() => { mensagemToast.value = '' }, 3000);
+  }
 }
 
 
@@ -142,7 +168,7 @@ function salvarTemaCustomizado() {
                 type="file"
                 id = "input-foto"
                 accept="image/*"
-                @change="fazendoUploadImagem"
+                @change="fazerUploadImagem"
                 class="input-escondido" 
                 />
 

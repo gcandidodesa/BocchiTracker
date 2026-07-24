@@ -55,13 +55,15 @@ export const usePerfilStore = defineStore('perfil', {
           this.fotoUrl = dados.fotoUrl || '';
           this.temaAtual = dados.temaAtual || 'padrao';
           
-          // Injeta o tema salvo no HTML
-          document.documentElement.setAttribute('data-theme', novoTema);
+          // MUDANÇA AQUI: Injeta o tema salvo usando this.temaAtual
+          document.documentElement.setAttribute('data-theme', this.temaAtual);
         } else {
           // Se for a primeira vez que usa este perfil, cria um documento padrão
           this.nomeExibicao = this.perfilAtivo;
           this.fotoUrl = '';
           this.temaAtual = 'padrao';
+          
+          // MUDANÇA AQUI: Injeta o tema padrão usando a string 'padrao'
           document.documentElement.setAttribute('data-theme', 'padrao');
           await this.salvarConfiguracoesNoFirebase();
         }

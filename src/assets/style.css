@@ -1,10 +1,13 @@
-:root {
+:root,
+[data-theme="padrao"],
+[data-theme="Padrao"] {
     --cor-fundo: #0f172a;
     --cor-texto: #f8fafc;
     --cor-primaria: #38bdf8;
     --cor-card: #1e293b;
 }
-[data-theme = "Bocchi"]
+
+[data-theme="Bocchi"],
 [data-theme="bocchi"] {
     --cor-fundo: #FFFACD; 
     --cor-texto: #333333;
